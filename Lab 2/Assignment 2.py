@@ -2,7 +2,6 @@ import numpy as np
 from enum import Enum
 from collections import deque
 import random
-import copy
 
 
 class DataMismatchError(Exception):
@@ -88,30 +87,32 @@ class NNData:
         random.shuffle(self._test_indices)
 
     def prime_data(self, target_set=None, order=None):
-        if (target_set is None) or (target_set is NNData.Set.TRAIN):
+        if target_set in (None, NNData.Set.TRAIN):
             for _ in range(len(self._train_pool)):
                 self._train_pool.popleft()
             for i in self._train_indices:
                 self._train_pool.append(i)
             if order is NNData.Order.RANDOM:
                 random.shuffle(self._train_pool)
-            if order is (NNData.Order.SEQUENTIAL or None):
+            if order in (None, NNData.Order.SEQUENTIAL):
                 pass
-        if (target_set is None) or (target_set is NNData.Set.TEST):
+        if target_set in (None, NNData.Set.TEST):
             for _ in range(len(self._test_pool)):
                 self._test_pool.popleft()
             for i in self._test_indices:
                 self._test_pool.append(i)
             if order is NNData.Order.RANDOM:
                 random.shuffle(self._test_pool)
-            if order is (NNData.Order.SEQUENTIAL or None):
+            if order in (None, NNData.Order.SEQUENTIAL):
                 pass
 
     def get_one_item(self, target_set=None):
-        if target_set is None or target_set is NNData.Set.TRAIN:
+        if target_set in (None, NNData.Set.TRAIN):
             our_pool = self._train_pool
-        if target_set is NNData.Set.TEST:
+        elif target_set is NNData.Set.TEST:
             our_pool = self._test_pool
+        else:
+            our_pool = target_set
         try:
             item = our_pool.popleft()
             return (self._features[item],
@@ -129,14 +130,17 @@ class NNData:
                     + len(self._train_indices))
 
     def pool_is_empty(self, target_set=None):
-        if target_set is None or target_set is NNData.Set.TRAIN:
+        if target_set in (None, NNData.Set.TRAIN):
             our_pool = self._train_pool
-        if target_set is NNData.Set.TEST:
+        elif target_set is NNData.Set.TEST:
             our_pool = self._test_pool
+        else:
+            our_pool = target_set
         if len(our_pool) > 0:
             return False
         if len(our_pool) == 0:
             return True
+
 
 def load_XOR():
     """
@@ -258,23 +262,14 @@ def main():
 if __name__ == "__main__":
     main()
 
-
 """
-"C:/Users/17147/PycharmProjects/CW2/Lab 2/Assignment 2.py"
+"C:/Users/Chinh/PycharmProjects/CW2/Lab 2/Assignment 2.py"
 [[0. 0.]
  [1. 0.]
  [0. 1.]
  [1. 1.]]
-[[0.]
- [1.]
- [2.]
- [3.]
- [4.]
- [5.]
- [6.]
- [7.]
- [8.]
- [9.]]
+Train Indices:[5, 0, 9]
+Test Indices:[7, 2, 8, 3, 1, 4, 6]
 No errors were identified by the unit test.
 You should still double check that your code meets spec.
 You should also check that PyCharm does not identify any PEP-8 issues.
