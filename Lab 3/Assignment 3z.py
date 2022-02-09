@@ -28,11 +28,11 @@ class MultiLinkNode:
         self._neighbors = {MultiLinkNode.Side.UPSTREAM: [], MultiLinkNode.Side.DOWNSTREAM: []}
 
     def __str__(self):
-        print(f'{id(self)} is the ID of our node! '
-              f'The neighboring nodes upstream are '
-              f'{[id(item) for item in self._neighbors[MultiLinkNode.Side.UPSTREAM]]}.'
-              f'The neighboring nodes downstream are '
-              f'{[id(item) for item in self._neighbors[MultiLinkNode.Side.DOWNSTREAM]]}.')
+        return f'{id(self)} is the ID of our node! ' \
+               f'The neighboring nodes upstream are ' \
+               f'{[id(item) for item in self._neighbors[MultiLinkNode.Side.UPSTREAM]]}. ' \
+               f'The neighboring nodes downstream are ' \
+               f'{[id(item) for item in self._neighbors[MultiLinkNode.Side.DOWNSTREAM]]}.'
 
     @abstractmethod
     def _process_new_neighbor(self, node, side):
@@ -86,7 +86,7 @@ class Neurode(MultiLinkNode):
         self._learning_rate = new_rate
 
 
-class FFNeurode(Neurode):
+class FFNeurode(Neurode, MultiLinkNode):
     def __init__(self, my_type):
         super().__init__(my_type)
 
@@ -97,10 +97,8 @@ class FFNeurode(Neurode):
     def _calculate_value(self):
         node_weighted_sum = 0
         for node in self._neighbors[MultiLinkNode.Side.UPSTREAM]:
-            print(f'Our self is {self.__str__()}. The node is {node.__str__()} '
-                  f'The weight and node value are: {self.get_weight(node)} {node.value}')
             node_weighted_sum += (self.get_weight(node) * node.value)
-        return self._sigmoid(node_weighted_sum)
+        self._value = self._sigmoid(node_weighted_sum)
 
     def _fire_downstream(self):
         for node in self._neighbors[MultiLinkNode.Side.DOWNSTREAM]:
@@ -376,11 +374,12 @@ if __name__ == "__main__":
     main()
 
 """
-"C:/Users/17147/PycharmProjects/CW2/Lab 3/Assignment 3.py"
+"C:/Users/17147/PycharmProjects/CW2/Lab 3/Assignment 3z.py"
 [[0. 0.]
  [1. 0.]
  [0. 1.]
  [1. 1.]]
+0.6417601225944725 0.6417601225944725
 
 Process finished with exit code 0
 """
