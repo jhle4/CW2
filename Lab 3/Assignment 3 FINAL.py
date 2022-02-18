@@ -115,6 +115,56 @@ class FFNeurode(Neurode):
             node.data_ready_upstream(self)
 
 
+class BPNeurode(Neurode):
+    def __init__(self, my_type):
+        self._delta = 0
+        super().__init__(my_type)
+
+    @staticmethod
+    def _sigmoid_derivative(value):
+        return value * (1-value)
+
+    def _calculate_delta(self, expected_value=None):
+        if self.node_type is LayerType.OUTPUT:
+            self._delta = (expected_value - self.value) * (self._sigmoid_derivative(self.value))
+        if self.node_type is not LayerType.OUTPUT:
+            delta_weighted_sum = 0
+            for node in self._neighbors[MultiLinkNode.Side.DOWNSTREAM]:
+                delta_weighted_sum += node.get_weight(self) * node.delta
+            self._delta = delta_weighted_sum * self._sigmoid_derivative(self.value)
+
+    def data_ready_downstream(self, node):
+        if self._check_in(node, MultiLinkNode.Side.DOWNSTREAM):
+            self._calculate_delta()
+            self._fire_upstream()
+            self._update_weights()
+
+    def set_expected(self, expected_value):
+        self._calculate_delta(expected_value)
+        for node in self._neighbors[MultiLinkNode.Side.UPSTREAM]:
+            node.data_ready_downstream(self)
+
+    def adjust_weights(self, node, adjustment):
+        self._weights[node] += adjustment
+
+    def _update_weights(self):
+        for node in self._neighbors[MultiLinkNode.Side.DOWNSTREAM]:
+            adjustment_calc = self.value * node.learning_rate * node.delta
+            node.adjust_weights(self, adjustment_calc)
+
+    def _fire_upstream(self):
+        for node in self._neighbors[MultiLinkNode.Side.UPSTREAM]:
+            node.data_ready_downstream(self)
+
+    @property
+    def delta(self):
+        return self._delta
+
+
+class FFBPNeurode(FFNeurode, BPNeurode):
+    pass
+
+
 class NNData:
     """
     Object that manages training and testing data for
@@ -363,23 +413,171 @@ def check_point_two_test():
     except:
         print("Error: Calculation of neurode value may be incorrect")
 
-
 def main():
     load_XOR()
     check_point_one_test()
     check_point_two_test()
+    try:
+        test_neurode = BPNeurode(LayerType.HIDDEN)
+    except:
+        print("Error - Cannot instaniate a BPNeurode object")
+        return
+    print("Testing Sigmoid Derivative")
+    try:
+        assert BPNeurode._sigmoid_derivative(0) == 0
+        if test_neurode._sigmoid_derivative(.4) == .24:
+            print("Pass")
+        else:
+            print("_sigmoid_derivative is not returning the correct "
+                  "result")
+    except:
+        print("Error - Is _sigmoid_derivative named correctly, created "
+              "in BPNeurode and decorated as a static method?")
+    print("Testing Instance objects")
+    try:
+        test_neurode.learning_rate
+        test_neurode.delta
+        print("Pass")
+    except:
+        print("Error - Are all instance objects created in __init__()?")
+
+    inodes = []
+    hnodes = []
+    onodes = []
+    for k in range(2):
+        inodes.append(FFBPNeurode(LayerType.INPUT))
+        hnodes.append(FFBPNeurode(LayerType.HIDDEN))
+        onodes.append(FFBPNeurode(LayerType.OUTPUT))
+    for node in inodes:
+        node.reset_neighbors(hnodes, MultiLinkNode.Side.DOWNSTREAM)
+    for node in hnodes:
+        node.reset_neighbors(inodes, MultiLinkNode.Side.UPSTREAM)
+        node.reset_neighbors(onodes, MultiLinkNode.Side.DOWNSTREAM)
+    for node in onodes:
+        node.reset_neighbors(hnodes, MultiLinkNode.Side.UPSTREAM)
+    print("testing learning rate values")
+    for node in hnodes:
+        print(f"my learning rate is {node.learning_rate}")
+    print("Testing check-in")
+    try:
+        hnodes[0]._reporting_nodes[MultiLinkNode.Side.DOWNSTREAM] = 1
+        if hnodes[0]._check_in(onodes[1], MultiLinkNode.Side.DOWNSTREAM) and \
+                not hnodes[1]._check_in(onodes[1],
+                                        MultiLinkNode.Side.DOWNSTREAM):
+            print("Pass")
+        else:
+            print("Error - _check_in is not responding correctly")
+    except:
+        print("Error - _check_in is raising an error.  Is it named correctly? "
+              "Check your syntax")
+    print("Testing calculate_delta on output nodes")
+    try:
+        onodes[0]._value = .2
+        onodes[0]._calculate_delta(.5)
+        if .0479 < onodes[0].delta < .0481:
+            print("Pass")
+        else:
+            print("Error - calculate delta is not returning the correct value."
+                  "Check the math.")
+            print("        Hint: do you have a separate process for hidden "
+                  "nodes vs output nodes?")
+    except:
+        print("Error - calculate_delta is raising an error.  Is it named "
+              "correctly?  Check your syntax")
+    print("Testing calculate_delta on hidden nodes")
+    try:
+        onodes[0]._delta = .2
+        onodes[1]._delta = .1
+        onodes[0]._weights[hnodes[0]] = .4
+        onodes[1]._weights[hnodes[0]] = .6
+        hnodes[0]._value = .3
+        hnodes[0]._calculate_delta()
+        if .02939 < hnodes[0].delta < .02941:
+            print("Pass")
+        else:
+            print("Error - calculate delta is not returning the correct value.  "
+                  "Check the math.")
+            print("        Hint: do you have a separate process for hidden "
+                  "nodes vs output nodes?")
+    except:
+        print("Error - calculate_delta is raising an error.  Is it named correctly?  Check your syntax")
+    try:
+        print("Testing update_weights")
+        hnodes[0]._update_weights()
+        if onodes[0].learning_rate == .05:
+            if .4 + .06 * onodes[0].learning_rate - .001 < \
+                    onodes[0]._weights[hnodes[0]] < \
+                    .4 + .06 * onodes[0].learning_rate + .001:
+                print("Pass")
+            else:
+                print("Error - weights not updated correctly.  "
+                      "If all other methods passed, check update_weights")
+        else:
+            print("Error - Learning rate should be .05, please verify")
+    except:
+        print("Error - update_weights is raising an error.  Is it named "
+              "correctly?  Check your syntax")
+    print("All that looks good.  Trying to train a trivial dataset "
+          "on our network")
+    inodes = []
+    hnodes = []
+    onodes = []
+    for k in range(2):
+        inodes.append(FFBPNeurode(LayerType.INPUT))
+        hnodes.append(FFBPNeurode(LayerType.HIDDEN))
+        onodes.append(FFBPNeurode(LayerType.OUTPUT))
+    for node in inodes:
+        node.reset_neighbors(hnodes, MultiLinkNode.Side.DOWNSTREAM)
+    for node in hnodes:
+        node.reset_neighbors(inodes, MultiLinkNode.Side.UPSTREAM)
+        node.reset_neighbors(onodes, MultiLinkNode.Side.DOWNSTREAM)
+    for node in onodes:
+        node.reset_neighbors(hnodes, MultiLinkNode.Side.UPSTREAM)
+    inodes[0].set_input(1)
+    inodes[1].set_input(0)
+    value1 = onodes[0].value
+    value2 = onodes[1].value
+    onodes[0].set_expected(0)
+    onodes[1].set_expected(1)
+    inodes[0].set_input(1)
+    inodes[1].set_input(0)
+    value1a = onodes[0].value
+    value2a = onodes[1].value
+    if (value1 - value1a > 0) and (value2a - value2 > 0):
+        print("Pass - Learning was done!")
+    else:
+        print("Fail - the network did not make progress.")
+        print("If you hit a wall, be sure to seek help in the discussion "
+              "forum, from the instructor and from the tutors")
 
 
 if __name__ == "__main__":
     main()
 
 """
-"C:/Users/17147/PycharmProjects/CW2/Lab 3/Assignment 3z.py"
+"C:/Users/17147/PycharmProjects/CW2/Lab 3/Assignment 3 FINAL.py"
 [[0. 0.]
  [1. 0.]
  [0. 1.]
  [1. 1.]]
-0.6417601225944725 0.6417601225944725
+0.5473266358553128 0.5473266358553128
+Testing Sigmoid Derivative
+Pass
+Testing Instance objects
+Pass
+testing learning rate values
+my learning rate is 0.05
+my learning rate is 0.05
+Testing check-in
+Pass
+Testing calculate_delta on output nodes
+Pass
+Testing calculate_delta on hidden nodes
+Pass
+Testing update_weights
+Pass
+All that looks good.  Trying to train a trivial dataset on our network
+Pass - Learning was done!
 
 Process finished with exit code 0
 """
