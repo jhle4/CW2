@@ -18,7 +18,10 @@ class LayerType(Enum):
 
 
 class Node:
-    pass
+    def __init__(self, data=None):
+        self.data = data
+        self.next = None
+        self.previous = None
 
 
 class DoublyLinkedList:
@@ -28,24 +31,87 @@ class DoublyLinkedList:
     def __init__(self):
         self._head = None
         self._tail = None
-        self._curr = None
-
-    def move_forward(self):
-        pass
-
-    def move_back(self):
-        pass
+        self._curr = self._head
 
     def reset_to_head(self):
-        pass
+        self._curr = self._head
+        if self._curr is None:
+            raise DoublyLinkedList.EmptyListError
+        else:
+            return self._curr.data
 
     def reset_to_tail(self):
+        self._curr = self._tail
+        if self._curr is None:
+            raise DoublyLinkedList.EmptyListError
+        else:
+            return self._curr.data
+
+    def move_forward(self):
+        if self._curr is None:
+            raise DoublyLinkedList.EmptyListError
+        elif self._curr == self._tail:
+            raise IndexError
+        else:
+            self._curr = self._curr.next
+        return self._curr.data
+
+    def move_back(self):
+        if self._curr is None:
+            raise DoublyLinkedList.EmptyListError
+        elif self._curr == self._head:
+            raise IndexError
+        else:
+            self._curr = self._curr.previous
+        return self._curr.data
 
     def add_to_head(self, data):
-        pass
+        new_node = Node(data)
+        new_node.next = self._head
+        if self._head is None:
+            self._tail = new_node
+        else:
+            self._head.previous = new_node
+        self._head = new_node
+        self.reset_to_head()
+
+    def remove_from_head(self):
+        if self._head is None:
+            raise DoublyLinkedList.EmptyListError
+        ret_val = self._head.data
+        if self._head == self._tail:
+            self._tail = None
+        self._head = self._head.next
+        self.reset_to_head()
+        return ret_val
 
     def add_after_cur(self, data):
-        pass
+        if self._curr is None:
+            self.add_to_head(data)
+            return
+        new_node = Node(data)
+        new_node.next = self._curr.next
+        new_node = self._curr.next.previous
+        self._curr.next = new_node
+        self._curr = new_node.previous
+
+    def remove_after_cur(self):
+        if self._curr is None:
+            raise DoublyLinkedList.EmptyListError
+        if self._curr == self._tail:
+            raise IndexError
+        ret_val = self._curr.next.data
+        if self._curr.next == self._tail:
+            self._tail = self._curr
+            return ret_val
+        self._curr = self._curr.next.next.previous
+        self._curr.next = self._curr.next.next
+        return ret_val
+
+    def get_current_data(self):
+        if self._head is None:
+            raise DoublyLinkedList.EmptyListError
+        return self._curr.data
 
 
 class MultiLinkNode:
@@ -332,10 +398,65 @@ def load_XOR():
     print(data._features)
 
 
+def dll_test():
+    my_list = DoublyLinkedList()
+    try:
+        my_list.get_current_data()
+    except DoublyLinkedList.EmptyListError:
+        print("Pass")
+    else:
+        print("Fail")
+    for a in range(3):
+        my_list.add_to_head(a)
+    if my_list.get_current_data() != 2:
+        print("Error")
+    my_list.move_forward()
+    if my_list.get_current_data() != 1:
+        print("Fail")
+    my_list.move_forward()
+    try:
+        my_list.move_forward()
+    except IndexError:
+        print("Pass")
+    else:
+        print("Fail")
+    if my_list.get_current_data() != 0:
+        print("Fail")
+    my_list.move_back()
+    my_list.remove_after_cur()
+    if my_list.get_current_data() != 1:
+        print("Fail")
+    my_list.move_back()
+    if my_list.get_current_data() != 2:
+        print("Fail")
+    try:
+        my_list.move_back()
+    except IndexError:
+        print("Pass")
+    else:
+        print("Fail")
+    my_list.move_forward()
+    if my_list.get_current_data() != 1:
+        print("Fail")
+
+
 def main():
     load_XOR()
+    dll_test()
 
 
 if __name__ == "__main__":
     main()
 
+"""
+"C:/Users/chuck/PycharmProjects/CW2/Lab 4/Assignment 4.py"
+[[0. 0.]
+ [1. 0.]
+ [0. 1.]
+ [1. 1.]]
+Pass
+Pass
+Pass
+
+Process finished with exit code 0
+"""
