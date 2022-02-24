@@ -106,12 +106,11 @@ class DoublyLinkedList:
             raise IndexError
         ret_val = self._curr.next.data
         if self._curr.next == self._tail:
-            self._tail.previous = None
             self._tail = self._curr
-            self._curr.next = None
-            return ret_val
-        self._curr.next = self._curr.next.next
-        self._curr.next.previous = self._curr
+            self._tail.next = None
+        else:
+            self._curr.next = self._curr.next.next
+            self._curr.next.previous = self._curr
         return ret_val
 
     def get_current_data(self):
