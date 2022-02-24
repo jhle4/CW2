@@ -81,8 +81,8 @@ class DoublyLinkedList:
         ret_val = self._head.data
         if self._head == self._tail:
             self._tail = None
+        self._head.next.previous = None
         self._head = self._head.next
-        self._head.previous = None
         self.reset_to_head()
         return ret_val
 
@@ -91,10 +91,13 @@ class DoublyLinkedList:
             self.add_to_head(data)
             return
         new_node = Node(data)
-        new_node.next = self._curr.next
-        new_node = self._curr.next.previous
+        if self._curr == self._tail:
+            self._tail = new_node
+        else:
+            new_node.next = self._curr.next
+            new_node.next.previous = new_node
         self._curr.next = new_node
-        self._curr = new_node.previous
+        new_node.previous = self._curr
 
     def remove_after_cur(self):  # need to fix to remove node from list
         if self._curr is None:
@@ -105,6 +108,7 @@ class DoublyLinkedList:
         if self._curr.next == self._tail:
             self._tail.previous = None
             self._tail = self._curr
+            self._curr.next = None
             return ret_val
         self._curr.next = self._curr.next.next
         self._curr.next.previous = self._curr
